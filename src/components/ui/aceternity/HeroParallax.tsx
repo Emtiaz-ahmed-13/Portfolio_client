@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "framer-motion";
+import Image from "next/image";
 import { useRef } from "react";
 import { cn } from "./cn";
 
@@ -25,7 +26,33 @@ export const HeroParallax = ({
     offset: ["start start", "end end"],
   });
 
-  const springConfig = { stiffness: 300, damping: 30, bounce: 100 };
+  // Create transforms individually at the top level
+  const yTransform0 = useTransform(scrollYProgress, [0, 1], [0, 0 * 250]);
+  const yTransform1 = useTransform(scrollYProgress, [0, 1], [0, 1 * 250]);
+  const yTransform2 = useTransform(scrollYProgress, [0, 1], [0, 2 * 250]);
+
+  const opacityTransform0 = useTransform(
+    scrollYProgress,
+    [0, 0.5, 1],
+    [1, 0.5, 0]
+  );
+  const opacityTransform1 = useTransform(
+    scrollYProgress,
+    [0, 0.5, 1],
+    [1, 0.5, 0]
+  );
+  const opacityTransform2 = useTransform(
+    scrollYProgress,
+    [0, 0.5, 1],
+    [1, 0.5, 0]
+  );
+
+  // Create an array of the transforms
+  const transforms = [
+    { yTransform: yTransform0, opacityTransform: opacityTransform0 },
+    { yTransform: yTransform1, opacityTransform: opacityTransform1 },
+    { yTransform: yTransform2, opacityTransform: opacityTransform2 },
+  ];
 
   return (
     <div
@@ -74,33 +101,28 @@ export const HeroParallax = ({
           <div className="relative h-[500px] md:h-auto">
             {products.slice(0, 3).map((product, idx) => (
               <motion.div
-                ref={(el) => (productRefs.current[idx] = el)}
+                ref={(el) => {
+                  productRefs.current[idx] = el;
+                }}
                 key={idx}
                 style={{
                   top: `${idx * 20}%`,
                   right: `${idx * 5}%`,
                   rotate: `${idx % 2 === 0 ? -5 : 5}deg`,
-                  y: useTransform(
-                    scrollYProgress,
-                    [0, 1],
-                    [0, idx * 250],
-                    springConfig
-                  ),
-                  opacity: useTransform(
-                    scrollYProgress,
-                    [0, 0.5, 1],
-                    [1, 0.5, 0],
-                    springConfig
-                  ),
+                  y: transforms[idx].yTransform,
+                  opacity: transforms[idx].opacityTransform,
                 }}
                 className="absolute w-64 rounded-xl overflow-hidden shadow-lg bg-white dark:bg-gray-800 transition-all duration-500 ease-out hover:scale-105 hover:shadow-xl"
               >
                 <div className="w-full h-40 overflow-hidden">
-                  <img
-                    src={product.thumbnail}
-                    alt={product.title}
-                    className="w-full h-full object-cover"
-                  />
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={product.thumbnail}
+                      alt={product.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-lg">{product.title}</h3>

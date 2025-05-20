@@ -3,12 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 // Import the sample blogs data
 import { BlogData, blogs } from "../route";
 
-export async function GET(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
+type BlogParams = {
+  params: {
+    id: string;
+  };
+};
+
+export async function GET(request: NextRequest, { params }: BlogParams) {
   try {
-    const id = context.params.id;
+    const id = params.id;
 
     // Find the blog with the matching ID
     const blog = blogs.find((b: BlogData) => b._id === id);
