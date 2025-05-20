@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // Define the Blog interface
 export interface BlogData {
@@ -69,7 +69,7 @@ export async function GET() {
 }
 
 // Get a single blog by ID (used in dynamic route)
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { id } = body;
