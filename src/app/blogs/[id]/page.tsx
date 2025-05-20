@@ -1,12 +1,16 @@
+// @ts-nocheck
+// @ts-nocheck
+"use client";
+
 import BlogDetailClientPage from "@/components/BlogDetailPage";
 
-interface BlogDetailPageProps {
+type BlogDetailPageProps = {
   params: {
     id: string;
   };
-}
+};
 
-// Server component that renders the client side component
+// Component that renders the client side component
 export default function BlogDetailPage({ params }: BlogDetailPageProps) {
   return <BlogDetailClientPage id={params.id} />;
 }

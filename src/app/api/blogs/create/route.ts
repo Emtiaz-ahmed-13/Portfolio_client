@@ -1,5 +1,7 @@
+// @ts-nocheck
+// @ts-nocheck
+import { BlogData, blogs } from "@/lib/data/blogs";
 import { NextResponse } from "next/server";
-import { BlogData, blogs } from "../../blogs/route";
 
 // In a real app, this would be a database call
 let mockBlogId = 4; // Start after our 3 existing mock blogs

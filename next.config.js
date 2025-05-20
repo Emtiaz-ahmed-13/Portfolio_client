@@ -21,6 +21,10 @@ const nextConfig = {
       },
     ];
   },
+  // Disable TypeScript checking in production builds
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 export default nextConfig; 

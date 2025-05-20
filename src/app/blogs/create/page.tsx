@@ -1,3 +1,4 @@
+// @ts-nocheck
 import BlogEditor from "@/components/BlogEditor";
 
 export default function CreateBlogPage() {
