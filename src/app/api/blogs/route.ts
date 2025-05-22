@@ -1,6 +1,6 @@
 // @ts-nocheck
 // @ts-nocheck
-import { blogs } from "@/lib/data/blogs";
+import { blogs, logBlogsState, resetBlogs } from "@/lib/data/blogs";
 import { NextRequest, NextResponse } from "next/server";
 
 // Define the Blog interface
@@ -17,8 +17,25 @@ export interface BlogData {
 }
 
 // Get all blogs
-export function GET() {
+export function GET(request) {
   try {
+    // Check if this is a reset request
+    const { searchParams } = new URL(request.url);
+    const shouldReset = searchParams.get("reset") === "true";
+
+    if (shouldReset) {
+      console.log("Received reset request, forcing reset of blogs data");
+      resetBlogs();
+    }
+    // Check if blogs array is empty, and reset if needed
+    else if (blogs.length === 0) {
+      console.log("Blogs array is empty, resetting to initial data");
+      resetBlogs();
+    } else {
+      console.log(`Returning ${blogs.length} blogs from API`);
+      logBlogsState();
+    }
+
     return NextResponse.json(blogs, { status: 200 });
   } catch (error) {
     console.error("Error fetching blogs:", error);
@@ -34,6 +51,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { id } = body;
+
+    // If blogs array is empty, reset it
+    if (blogs.length === 0) {
+      console.log(
+        "Blogs array is empty, resetting to initial data before POST"
+      );
+      resetBlogs();
+    }
 
     const blog = blogs.find((b) => b._id === id);
 

@@ -9,18 +9,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
-import { Blog, fetchBlogs } from "@/lib/redux/slices/blogsSlice";
+import { Blog, fetchBlogs, setBlogs } from "@/lib/redux/slices/blogsSlice";
 import { setConnectionStatus } from "@/lib/redux/slices/uiSlice";
 import { RootState } from "@/lib/redux/store";
 import { motion } from "framer-motion";
-import { PlusCircle } from "lucide-react";
+import { Crown, PlusCircle, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AnimatedGradient } from "./ui/aceternity/AnimatedGradient";
 import { FloatingNavbar } from "./ui/aceternity/FloatingNavbar";
 import { SparklesText } from "./ui/aceternity/SparklesText";
 import { ThreeDCard } from "./ui/aceternity/ThreeDCard";
+import { Badge } from "./ui/badge";
 
 export default function BlogsClientPage() {
   const dispatch = useAppDispatch();
@@ -30,6 +31,8 @@ export default function BlogsClientPage() {
   const connectionStatus = useAppSelector(
     (state: RootState) => state.ui.connectionStatus
   );
+  const [refreshing, setRefreshing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const navItems = [
     { name: "Home", link: "/" },
@@ -37,10 +40,127 @@ export default function BlogsClientPage() {
     { name: "Create", link: "/blogs/create" },
   ];
 
+  // Check if user is admin
   useEffect(() => {
-    // Fetch blogs when the component mounts
+    const checkAdmin = async () => {
+      try {
+        const response = await fetch("/api/admin/check-auth");
+        if (response.ok) {
+          setIsAdmin(true);
+        }
+      } catch (error) {
+        console.error("Admin check failed:", error);
+      }
+    };
+
+    checkAdmin();
+  }, []);
+
+  // Function to fetch blogs directly from API
+  const fetchBlogsDirectly = async () => {
+    try {
+      setRefreshing(true);
+
+      // Use the dedicated refresh endpoint
+      const response = await fetch("/api/blogs/refresh");
+
+      if (response.ok) {
+        const data = await response.json();
+        dispatch(setBlogs(data.blogs));
+        dispatch(
+          setConnectionStatus({
+            status: "connected",
+            message: `Refreshed ${data.blogCount} blogs successfully`,
+          })
+        );
+      } else {
+        throw new Error("Failed to fetch blogs");
+      }
+    } catch (err) {
+      console.error("Error directly fetching blogs:", err);
+      dispatch(
+        setConnectionStatus({
+          status: "warning",
+          message: "Could not refresh blogs",
+        })
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Handle manual refresh
+  const handleRefresh = () => {
+    fetchBlogsDirectly();
+  };
+
+  useEffect(() => {
+    // First try to reset blogs by calling a special endpoint
+    const resetBlogsData = async () => {
+      try {
+        console.log("Attempting to reset blogs data...");
+        await fetch("/api/blogs?reset=true");
+      } catch (err) {
+        console.error("Error resetting blogs:", err);
+      }
+    };
+
+    resetBlogsData();
+
+    // Check for cached blogs in localStorage
+    const cachedBlogs = localStorage.getItem("cachedBlogs");
+    if (cachedBlogs) {
+      try {
+        const parsedBlogs = JSON.parse(cachedBlogs);
+        // Dispatch the cached blogs to Redux store
+        dispatch(setBlogs(parsedBlogs));
+        dispatch(
+          setConnectionStatus({
+            status: "connected",
+            message: "Using recently created blogs",
+          })
+        );
+        // Clear the cache after using it
+        localStorage.removeItem("cachedBlogs");
+        return;
+      } catch (err) {
+        console.error("Error parsing cached blogs:", err);
+        // If there's an error parsing, continue with normal fetch
+      }
+    }
+
+    // Fetch blogs when the component mounts if no cached blogs
     const fetchData = async () => {
       try {
+        // First try the refresh endpoint to ensure we have data
+        const refreshResponse = await fetch("/api/blogs/refresh");
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          dispatch(setBlogs(refreshData.blogs));
+          dispatch(
+            setConnectionStatus({
+              status: "connected",
+              message: "Connected to backend successfully",
+            })
+          );
+          return;
+        }
+
+        // If that fails, try direct API to get all blogs
+        const response = await fetch("/api/blogs");
+        if (response.ok) {
+          const data = await response.json();
+          dispatch(setBlogs(data));
+          dispatch(
+            setConnectionStatus({
+              status: "connected",
+              message: "Connected to backend successfully",
+            })
+          );
+          return;
+        }
+
+        // Fallback to Redux action
         await dispatch(fetchBlogs()).unwrap();
         dispatch(
           setConnectionStatus({
@@ -62,7 +182,7 @@ export default function BlogsClientPage() {
     fetchData();
   }, [dispatch]);
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <div className="container mx-auto py-12 px-4 text-center">
         <motion.div
@@ -121,22 +241,37 @@ export default function BlogsClientPage() {
               transition={{ duration: 0.5 }}
               className="mb-6 md:mb-0"
             >
-              <SparklesText words="My Blog" className="text-4xl mb-3" />
+              <SparklesText words="Blog Portal" className="text-4xl mb-3" />
               <p className="text-xl text-muted-foreground">
-                Thoughts, ideas, and guides on web development
+                All blogs including admin-created content
               </p>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
+              className="flex gap-3 flex-wrap"
             >
-              <Link href="/blogs/create">
-                <Button className="flex items-center gap-2 rounded-full px-6">
-                  <PlusCircle size={16} />
-                  Create New Blog
-                </Button>
-              </Link>
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                className="flex items-center gap-2 rounded-full"
+                disabled={refreshing}
+              >
+                <RefreshCw
+                  size={16}
+                  className={refreshing ? "animate-spin" : ""}
+                />
+                {refreshing ? "Refreshing..." : "Refresh"}
+              </Button>
+              {isAdmin && (
+                <Link href="/blogs/create">
+                  <Button className="flex items-center gap-2 rounded-full px-6">
+                    <PlusCircle size={16} />
+                    Create New Blog
+                  </Button>
+                </Link>
+              )}
             </motion.div>
           </div>
 
@@ -162,11 +297,13 @@ export default function BlogsClientPage() {
                 <p className="text-muted-foreground mb-6 text-lg">
                   No blog posts yet.
                 </p>
-                <Link href="/blogs/create">
-                  <Button className="rounded-full px-8">
-                    Create Your First Blog
-                  </Button>
-                </Link>
+                {isAdmin && (
+                  <Link href="/blogs/create">
+                    <Button className="rounded-full px-8">
+                      Create Your First Blog
+                    </Button>
+                  </Link>
+                )}
               </motion.div>
             )}
 
@@ -189,6 +326,17 @@ export default function BlogsClientPage() {
                             fill
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60" />
+                          {blog.author === "Emtiaz Ahmed" && (
+                            <div className="absolute top-4 left-4">
+                              <Badge
+                                variant="default"
+                                className="flex items-center gap-1 bg-primary/80 hover:bg-primary"
+                              >
+                                <Crown size={12} />
+                                Admin
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       )}
                       <div
@@ -222,6 +370,21 @@ export default function BlogsClientPage() {
                                 </motion.span>
                               </>
                             )}
+                            {blog.author === "Emtiaz Ahmed" &&
+                              !blog.coverImage && (
+                                <>
+                                  <span className="text-muted-foreground">
+                                    •
+                                  </span>
+                                  <Badge
+                                    variant="default"
+                                    className="flex items-center gap-1 bg-primary/80 hover:bg-primary"
+                                  >
+                                    <Crown size={12} />
+                                    Admin
+                                  </Badge>
+                                </>
+                              )}
                           </div>
                           <CardTitle className="text-2xl md:text-3xl mb-3">
                             <Link

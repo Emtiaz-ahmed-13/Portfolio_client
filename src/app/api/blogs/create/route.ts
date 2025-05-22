@@ -1,13 +1,15 @@
 // @ts-nocheck
 // @ts-nocheck
-import { BlogData, blogs } from "@/lib/data/blogs";
+import { BlogData, blogs, logBlogsState } from "@/lib/data/blogs";
 import { NextResponse } from "next/server";
 
 // In a real app, this would be a database call
-let mockBlogId = 4; // Start after our 3 existing mock blogs
+let mockBlogId = blogs.length + 1; // Start after our existing mock blogs
 
 export async function POST(request: Request) {
   try {
+    console.log("Creating a new blog post, current blogs count:", blogs.length);
+
     const data = await request.json();
 
     // Validate the required fields
@@ -20,7 +22,7 @@ export async function POST(request: Request) {
 
     // In a real app, this would be saved to a database
     const newBlog: BlogData = {
-      _id: mockBlogId.toString(),
+      _id: mockBlogId.toString(), // Use string ID
       title: data.title,
       content: data.content,
       summary: data.summary || "",
@@ -35,8 +37,15 @@ export async function POST(request: Request) {
     blogs.unshift(newBlog);
     mockBlogId++;
 
+    console.log(`New blog created with ID: ${newBlog._id}`);
+    logBlogsState();
+
     return NextResponse.json(
-      { message: "Blog created successfully", blog: newBlog },
+      {
+        message: "Blog created successfully",
+        blog: newBlog,
+        blogs: blogs,
+      },
       { status: 201 }
     );
   } catch (error) {

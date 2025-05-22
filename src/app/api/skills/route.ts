@@ -31,9 +31,6 @@ const skills = [
     items: [
       { name: "Git", level: 90 },
       { name: "Docker", level: 70 },
-      { name: "AWS", level: 65 },
-      { name: "CI/CD", level: 75 },
-      { name: "Jest/Testing", level: 80 },
     ],
   },
   {
@@ -49,17 +46,8 @@ const skills = [
   },
 ];
 
-export async function GET() {
-  try {
-    // Return all skills
-    return NextResponse.json(skills, { status: 200 });
-  } catch (error: unknown) {
-    console.error("Error fetching skills:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch skills" },
-      { status: 500 }
-    );
-  }
+export function GET() {
+  return NextResponse.json(skills, { status: 200 });
 }
 
 // Get a specific skill category by ID

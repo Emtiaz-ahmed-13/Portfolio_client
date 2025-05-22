@@ -8,12 +8,26 @@ import { HeroParallax } from "@/components/ui/aceternity/HeroParallax";
 import { PortfolioGallery } from "@/components/ui/aceternity/PortfolioGallery";
 import { SparklesText } from "@/components/ui/aceternity/SparklesText";
 import { ThreeDCard } from "@/components/ui/aceternity/ThreeDCard";
-import { WaveText } from "@/components/ui/aceternity/WaveText";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FaAws, FaDocker, FaGitAlt, FaNodeJs, FaReact } from "react-icons/fa";
+import {
+  SiExpress,
+  SiHtml5,
+  SiJest,
+  SiMongodb,
+  SiNextdotjs,
+  SiPostgresql,
+  SiTailwindcss,
+  SiTypescript,
+} from "react-icons/si";
 
 // Define types for our data
 interface Project {
@@ -85,9 +99,8 @@ function getMockProfileData() {
     bio: "Passionate developer with expertise in MERN stack and modern web technologies.",
     email: "emtiaz@example.com",
     location: "Bangladesh",
-    avatarUrl: "https://github.com/shadcn.png",
-    resumeUrl:
-      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    avatarUrl: "/profile.jpg",
+    resumeUrl: "/resume.pdf",
     social: {
       github: "https://github.com/emtiaz-ahmed-13",
       linkedin: "https://linkedin.com/in/emtiaz-ahmed",
@@ -101,22 +114,7 @@ function getMockProfileData() {
           year: "2018-2022",
         },
       ],
-      experience: [
-        {
-          company: "Tech Solutions Ltd.",
-          position: "Senior Developer",
-          period: "2022-Present",
-          description:
-            "Leading development of web applications using MERN stack.",
-        },
-        {
-          company: "Startup BD",
-          position: "Junior Developer",
-          period: "2020-2022",
-          description:
-            "Developed responsive user interfaces and implemented backend features.",
-        },
-      ],
+      experience: [],
     },
   };
 }
@@ -159,33 +157,84 @@ function getMockSkillsData() {
   ];
 }
 
+const skillIconMap = {
+  React: <FaReact className="text-sky-400" />,
+  "Next.js": <SiNextdotjs className="text-black dark:text-white" />,
+  TypeScript: <SiTypescript className="text-blue-500" />,
+  "Tailwind CSS": <SiTailwindcss className="text-cyan-400" />,
+  "HTML/CSS": <SiHtml5 className="text-orange-500" />,
+  Nodejs: <FaNodeJs className="text-green-600" />,
+  "Node.js": <FaNodeJs className="text-green-600" />,
+  Express: <SiExpress className="text-gray-700 dark:text-gray-200" />,
+  MongoDB: <SiMongodb className="text-green-700" />,
+  PostgreSQL: <SiPostgresql className="text-blue-700" />,
+  "RESTful APIs": <span>🔗</span>,
+  Git: <FaGitAlt className="text-orange-600" />,
+  Docker: <FaDocker className="text-blue-400" />,
+  AWS: <FaAws className="text-yellow-500" />,
+  "CI/CD": <span>⚙️</span>,
+  "Jest/Testing": <SiJest className="text-red-500" />,
+  "Problem Solving": <span>🧠</span>,
+  Communication: <span>💬</span>,
+  "Team Collaboration": <span>🤝</span>,
+  "Time Management": <span>⏰</span>,
+  Adaptability: <span>🔄</span>,
+};
+
 export default function Home() {
   const [data, setData] = useState({
     status: "loading",
     message: "Loading content...",
     profile: getMockProfileData(),
     projects: getMockProjectsData(),
-    skills: getMockSkillsData(),
+    skills: [],
+    experience: [],
+    blogs: [],
   });
+
+  // Add reference for parallax effect
+  const targetRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start start", "end start"],
+  });
+
+  // Create scroll-based animations
+  const opacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 1], [1, 0.8]);
+  const position = "fixed";
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Try to fetch projects from local API
-        const response = await fetch("/api/projects");
-        if (response.ok) {
-          const projectsData = await response.json();
+        // Fetch projects, skills, and experience from local API endpoints
+        const [projectsRes, skillsRes, expRes, blogsRes] = await Promise.all([
+          fetch("/api/projects"),
+          fetch("/api/skills"),
+          fetch("/api/experience"),
+          fetch("/api/blogs"),
+        ]);
 
-          setData({
-            status: "success",
-            message: "Connected to API successfully",
-            profile: getMockProfileData(),
-            projects: projectsData,
-            skills: getMockSkillsData(),
-          });
-        } else {
-          throw new Error("Failed to fetch from API");
-        }
+        // Process responses and handle failures gracefully
+        const projectsData = projectsRes.ok
+          ? await projectsRes.json()
+          : getMockProjectsData();
+        const skillsData = skillsRes.ok
+          ? await skillsRes.json()
+          : getMockSkillsData();
+        const experienceData = expRes.ok ? await expRes.json() : [];
+        const blogsData = blogsRes.ok ? await blogsRes.json() : [];
+
+        // Set all data with consistent API status message
+        setData({
+          status: "success",
+          message: "Connected to API successfully",
+          profile: getMockProfileData(),
+          projects: projectsData,
+          skills: skillsData,
+          experience: experienceData,
+          blogs: blogsData,
+        });
       } catch (error) {
         console.warn("Using mock data:", error);
         setData({
@@ -194,10 +243,11 @@ export default function Home() {
           profile: getMockProfileData(),
           projects: getMockProjectsData(),
           skills: getMockSkillsData(),
+          experience: [],
+          blogs: [],
         });
       }
     };
-
     fetchData();
   }, []);
 
@@ -207,6 +257,8 @@ export default function Home() {
     profile: profileData,
     projects: projectsData,
     skills: skillsData,
+    experience: experienceData,
+    blogs: blogsData,
   } = data;
 
   // Create featured items for the hero parallax
@@ -253,138 +305,86 @@ export default function Home() {
       <FloatingNavbar navItems={navItems} />
 
       {/* Hero Section with Parallax */}
-      <section className="relative h-screen">
-        <HeroParallax products={featuredItems} />
-
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pointer-events-auto">
-            <div className="text-center">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="max-w-3xl mx-auto"
-              >
-                <ThreeDCard className="overflow-hidden bg-background/80 backdrop-blur-md border border-primary/20 shadow-xl">
-                  <div className="p-8 sm:p-10">
-                    <SparklesText
-                      words={profileData.name}
-                      className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4"
-                    />
-
-                    <WaveText
-                      text={profileData.title}
-                      delay={0.4}
-                      className="text-xl md:text-2xl text-muted-foreground mb-6"
-                    />
-
-                    <motion.p
-                      className="text-base md:text-lg text-muted-foreground max-w-lg mx-auto mb-8"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.6, duration: 0.8 }}
-                    >
-                      {profileData.bio}
-                    </motion.p>
-
-                    <motion.div
-                      className="flex flex-wrap gap-4 justify-center"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.8, duration: 0.8 }}
-                    >
-                      <Link href="#projects">
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Button
-                            variant="default"
-                            size="lg"
-                            className="rounded-full px-8"
-                          >
-                            View Projects
-                          </Button>
-                        </motion.div>
-                      </Link>
-                      <Link href="#contact">
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Button
-                            variant="outline"
-                            size="lg"
-                            className="rounded-full px-8"
-                          >
-                            Contact Me
-                          </Button>
-                        </motion.div>
-                      </Link>
-                    </motion.div>
-
-                    {/* Social links */}
-                    <motion.div
-                      className="flex gap-6 mt-8 justify-center"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 1, duration: 0.8 }}
-                    >
-                      {Object.entries(profileData.social).map(
-                        ([platform, url], index) => (
-                          <motion.a
-                            key={platform}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-primary transition-colors"
-                            whileHover={{ y: -5 }}
-                            transition={{
-                              type: "spring",
-                              stiffness: 400,
-                              damping: 10,
-                              delay: index * 0.1,
-                            }}
-                          >
-                            {platform.charAt(0).toUpperCase() +
-                              platform.slice(1)}
-                          </motion.a>
-                        )
-                      )}
-                    </motion.div>
-                  </div>
-                </ThreeDCard>
-              </motion.div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* About Section */}
-      <section id="about" className="py-20 px-8 lg:px-16">
-        <AnimatedGradient
-          gradientColors={[
-            "rgba(125, 211, 252, 0.08)",
-            "rgba(129, 140, 248, 0.08)",
-          ]}
-          className="py-12"
+      <div ref={targetRef} className="h-screen">
+        <motion.div
+          style={{ opacity, scale, position }}
+          className="w-full h-screen top-0 left-0 z-10"
         >
+          <HeroParallax products={featuredItems} />
+        </motion.div>
+      </div>
+
+      {/* Main content starts here */}
+      <div className="bg-background">
+        {/* About Section */}
+        <section id="about" className="py-20 px-8 lg:px-16">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
               <SparklesText words="About Me" className="text-4xl mb-4" />
               <div className="w-24 h-1 bg-primary mx-auto rounded-full"></div>
             </div>
 
+            {/* Hero Card moved to About section */}
+            <div className="mb-12">
+              <ThreeDCard className="overflow-hidden bg-background/80 backdrop-blur-md border border-primary/20 shadow-xl max-w-2xl mx-auto">
+                <div className="p-8 sm:p-10">
+                  <SparklesText
+                    words={profileData.name}
+                    className="text-4xl md:text-5xl font-bold mb-4"
+                  />
+
+                  <motion.p
+                    className="text-xl md:text-2xl text-muted-foreground mb-6"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    transition={{ delay: 0.3, duration: 0.8 }}
+                    viewport={{ once: true }}
+                  >
+                    {profileData.title}
+                  </motion.p>
+
+                  <motion.div
+                    className="flex gap-6 mt-8 justify-center"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    transition={{ delay: 0.5, duration: 0.8 }}
+                    viewport={{ once: true }}
+                  >
+                    {Object.entries(profileData.social).map(
+                      ([platform, url], index) => (
+                        <motion.a
+                          key={platform}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground hover:text-primary transition-colors"
+                          whileHover={{ y: -5 }}
+                        >
+                          {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                        </motion.a>
+                      )
+                    )}
+                  </motion.div>
+                </div>
+              </ThreeDCard>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
               <motion.div
                 className="space-y-6"
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
+                initial={{ opacity: 0, x: -40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.7, delay: 0.2 }}
                 viewport={{ once: true }}
               >
                 <ThreeDCard className="overflow-hidden">
-                  <div className="relative overflow-hidden rounded-xl shadow-xl">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.7, delay: 0.3 }}
+                    viewport={{ once: true }}
+                    className="relative overflow-hidden rounded-xl shadow-xl"
+                  >
                     <Image
                       src={profileData.avatarUrl}
                       alt={profileData.name}
@@ -399,15 +399,14 @@ export default function Home() {
                       </h3>
                       <p className="text-white/80">{profileData.title}</p>
                     </div>
-                  </div>
+                  </motion.div>
                 </ThreeDCard>
               </motion.div>
-
               <motion.div
                 className="space-y-6"
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
+                initial={{ opacity: 0, x: 40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.7, delay: 0.3 }}
                 viewport={{ once: true }}
               >
                 <h3 className="text-2xl font-bold">My Story</h3>
@@ -430,21 +429,75 @@ export default function Home() {
                   </svg>
                   {profileData.location}
                 </p>
-
+                <div className="mt-6">
+                  <h4 className="font-medium text-lg mb-2">Experience</h4>
+                  <AnimatePresence>
+                    {experienceData.length > 0 ? (
+                      <motion.ul
+                        initial="hidden"
+                        animate="visible"
+                        exit="hidden"
+                        variants={{
+                          hidden: {},
+                          visible: {
+                            transition: { staggerChildren: 0.15 },
+                          },
+                        }}
+                        className="space-y-3"
+                      >
+                        {experienceData.map((exp, idx) => (
+                          <motion.li
+                            key={idx}
+                            initial={{ opacity: 0, x: 30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.6, delay: idx * 0.1 }}
+                            viewport={{ once: true }}
+                            className="p-4 border border-muted/30 rounded-xl bg-muted/10"
+                          >
+                            <div className="font-semibold">
+                              {exp.position} @ {exp.company}
+                            </div>
+                            <div className="text-xs text-muted-foreground mb-1">
+                              {exp.period}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {exp.description}
+                            </div>
+                          </motion.li>
+                        ))}
+                      </motion.ul>
+                    ) : (
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                        className="text-sm text-muted-foreground"
+                      >
+                        No experience data available.
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                  <div className="p-4 border border-muted/30 rounded-xl bg-muted/10">
-                    <h4 className="font-medium text-lg">Experience</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {profileData.resume.experience.length} Jobs
-                    </p>
-                  </div>
-                  <div className="p-4 border border-muted/30 rounded-xl bg-muted/10">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    viewport={{ once: true }}
+                    className="p-4 border border-muted/30 rounded-xl bg-muted/10"
+                  >
                     <h4 className="font-medium text-lg">Education</h4>
                     <p className="text-sm text-muted-foreground">
                       {profileData.resume.education.length} Degrees
                     </p>
-                  </div>
-                  <div className="p-4 border border-muted/30 rounded-xl bg-muted/10">
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                    viewport={{ once: true }}
+                    className="p-4 border border-muted/30 rounded-xl bg-muted/10"
+                  >
                     <h4 className="font-medium text-lg">Skills</h4>
                     <p className="text-sm text-muted-foreground">
                       {skillsData.reduce(
@@ -453,20 +506,24 @@ export default function Home() {
                       )}{" "}
                       Technologies
                     </p>
-                  </div>
-                  <div className="p-4 border border-muted/30 rounded-xl bg-muted/10">
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.4 }}
+                    viewport={{ once: true }}
+                    className="p-4 border border-muted/30 rounded-xl bg-muted/10"
+                  >
                     <h4 className="font-medium text-lg">Projects</h4>
                     <p className="text-sm text-muted-foreground">
                       {projectsData.length} Projects
                     </p>
-                  </div>
+                  </motion.div>
                 </div>
-
-                {/* Download Resume Button */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
                   viewport={{ once: true }}
                   className="mt-8"
                 >
@@ -497,189 +554,186 @@ export default function Home() {
               </motion.div>
             </div>
           </div>
-        </AnimatedGradient>
-      </section>
+        </section>
 
-      {/* Skills Section */}
-      <section id="skills" className="py-20 px-8 lg:px-16 bg-muted/10">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <SparklesText words="My Skills" className="text-4xl mb-4" />
-            <div className="w-24 h-1 bg-primary mx-auto rounded-full"></div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {skillsData.map((category, catIndex) => (
+        {/* Skills Section */}
+        <section id="skills" className="py-20 px-8 lg:px-16 bg-muted/10">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
               <motion.div
-                key={category.id}
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: catIndex * 0.1, duration: 0.5 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.7, delay: 0.1 }}
                 viewport={{ once: true }}
               >
-                <ThreeDCard>
-                  <div className="p-6 bg-background/80 backdrop-blur-sm rounded-xl">
-                    <h3 className="text-xl font-bold mb-4 flex items-center">
-                      <span className="inline-block w-3 h-3 rounded-full bg-primary mr-2"></span>
-                      {category.category}
-                    </h3>
-                    <div className="space-y-5">
-                      {category.items.map((skill, skillIndex) => (
-                        <div key={skillIndex} className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="font-medium">{skill.name}</span>
-                            <span className="text-muted-foreground">
-                              {skill.level}%
-                            </span>
-                          </div>
-                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              whileInView={{ width: `${skill.level}%` }}
-                              transition={{
-                                duration: 1,
-                                delay: 0.2 + skillIndex * 0.1,
-                                ease: "easeOut",
-                              }}
-                              viewport={{ once: true }}
-                              className="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full"
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </ThreeDCard>
+                <SparklesText words="My Skills" className="text-4xl mb-4" />
+                <div className="w-24 h-1 bg-primary mx-auto rounded-full"></div>
               </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Projects Section */}
-      <section id="projects" className="py-20 px-8 lg:px-16">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <SparklesText words="My Projects" className="text-4xl mb-4" />
-            <div className="w-24 h-1 bg-primary mx-auto rounded-full mb-8"></div>
-            <p className="max-w-2xl mx-auto text-muted-foreground">
-              Check out some of my latest projects. Each project showcases
-              different skills and technologies I&apos;ve worked with.
-            </p>
-          </div>
-
-          <PortfolioGallery projects={projectsData} />
-
-          {/* Resume Download in Projects Section */}
-          <motion.div
-            className="mt-12 max-w-md mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            viewport={{ once: true }}
-          >
-            <ThreeDCard className="overflow-hidden bg-background/50 backdrop-blur-sm border border-primary/20">
-              <div className="p-6 text-center">
-                <h3 className="text-xl font-bold mb-3">Want to see more?</h3>
-                <p className="text-muted-foreground mb-4">
-                  Check out my full resume for complete details about my
-                  experience and skills.
-                </p>
-                <a
-                  href={profileData.resumeUrl}
-                  download
-                  className="inline-block"
+            </div>
+            <div className="space-y-12">
+              {skillsData.map((category, catIndex) => (
+                <motion.div
+                  key={category.id}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: catIndex * 0.1, duration: 0.6 }}
+                  viewport={{ once: true }}
                 >
-                  <Button
-                    variant="default"
-                    size="lg"
-                    className="rounded-full px-8 flex items-center gap-2"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    Download Resume
-                  </Button>
-                </a>
-              </div>
-            </ThreeDCard>
-          </motion.div>
-        </div>
-      </section>
+                  <h3 className="text-2xl font-semibold mb-6 text-primary flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 rounded-full bg-primary mr-2"></span>
+                    {category.category}
+                  </h3>
+                  <div className="flex flex-wrap gap-4">
+                    {category.items.map((skill, skillIndex) => (
+                      <motion.div
+                        key={skill.name}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        transition={{
+                          delay: 0.2 + skillIndex * 0.05,
+                          duration: 0.4,
+                        }}
+                        viewport={{ once: true }}
+                        className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-background border border-primary/20 shadow-sm text-base font-medium hover:bg-primary/10 hover:scale-105 transition-all cursor-pointer"
+                      >
+                        <span className="text-xl">
+                          {skillIconMap[skill.name] || <span>💡</span>}
+                        </span>
+                        <span>{skill.name}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      {/* Contact Section */}
-      <section id="contact" className="py-20 px-8 lg:px-16 bg-muted/10">
-        <AnimatedGradient
-          gradientColors={[
-            "rgba(139, 92, 246, 0.08)",
-            "rgba(125, 211, 252, 0.08)",
-          ]}
-          className="py-12"
-        >
-          <div className="max-w-4xl mx-auto">
+        {/* Projects Section */}
+        <section id="projects" className="py-20 px-8 lg:px-16">
+          <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
-              <SparklesText words="Get In Touch" className="text-4xl mb-4" />
-              <div className="w-24 h-1 bg-primary mx-auto rounded-full"></div>
-              <p className="mt-6 text-muted-foreground max-w-2xl mx-auto">
-                Interested in working together? Feel free to reach out to me for
-                collaboration opportunities or just to say hello!
+              <SparklesText words="My Projects" className="text-4xl mb-4" />
+              <div className="w-24 h-1 bg-primary mx-auto rounded-full mb-8"></div>
+              <p className="max-w-2xl mx-auto text-muted-foreground">
+                Check out some of my latest projects. Each project showcases
+                different skills and technologies I&apos;ve worked with.
               </p>
             </div>
 
-            <ThreeDCard>
-              <div className="p-8 bg-background/80 backdrop-blur-sm rounded-xl">
-                <ContactForm />
-              </div>
-            </ThreeDCard>
-          </div>
-        </AnimatedGradient>
-      </section>
+            <PortfolioGallery projects={projectsData} />
 
-      {/* Footer */}
-      <footer className="py-8 px-8 lg:px-16 border-t">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <motion.p
-            className="text-sm text-muted-foreground"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            viewport={{ once: true }}
-          >
-            © {new Date().getFullYear()} {profileData.name}. All rights
-            reserved.
-          </motion.p>
-          <div className="flex gap-6">
-            {Object.entries(profileData.social).map(([platform, url], i) => (
-              <motion.a
-                key={platform}
-                href={url}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.1 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -2 }}
-              >
-                {platform.charAt(0).toUpperCase() + platform.slice(1)}
-              </motion.a>
-            ))}
+            {/* Resume Download in Projects Section */}
+            <motion.div
+              className="mt-12 max-w-md mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+            >
+              <ThreeDCard className="overflow-hidden bg-background/50 backdrop-blur-sm border border-primary/20">
+                <div className="p-6 text-center">
+                  <h3 className="text-xl font-bold mb-3">Want to see more?</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Check out my full resume for complete details about my
+                    experience and skills.
+                  </p>
+                  <a
+                    href={profileData.resumeUrl}
+                    download
+                    className="inline-block"
+                  >
+                    <Button
+                      variant="default"
+                      size="lg"
+                      className="rounded-full px-8 flex items-center gap-2"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Download Resume
+                    </Button>
+                  </a>
+                </div>
+              </ThreeDCard>
+            </motion.div>
           </div>
-        </div>
-      </footer>
+        </section>
+
+        {/* Contact Section */}
+        <section id="contact" className="py-20 px-8 lg:px-16 bg-muted/10">
+          <AnimatedGradient
+            gradientColors={[
+              "rgba(139, 92, 246, 0.08)",
+              "rgba(125, 211, 252, 0.08)",
+            ]}
+            className="py-12"
+          >
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-16">
+                <SparklesText words="Get In Touch" className="text-4xl mb-4" />
+                <div className="w-24 h-1 bg-primary mx-auto rounded-full"></div>
+                <p className="mt-6 text-muted-foreground max-w-2xl mx-auto">
+                  Interested in working together? Feel free to reach out to me
+                  for collaboration opportunities or just to say hello!
+                </p>
+              </div>
+
+              <ThreeDCard>
+                <div className="p-8 bg-background/80 backdrop-blur-sm rounded-xl">
+                  <ContactForm />
+                </div>
+              </ThreeDCard>
+            </div>
+          </AnimatedGradient>
+        </section>
+
+        {/* Footer */}
+        <footer className="py-8 px-8 lg:px-16 border-t">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <motion.p
+              className="text-sm text-muted-foreground"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              viewport={{ once: true }}
+            >
+              © {new Date().getFullYear()} {profileData.name}. All rights
+              reserved.
+            </motion.p>
+            <div className="flex gap-6">
+              {Object.entries(profileData.social).map(([platform, url], i) => (
+                <motion.a
+                  key={platform}
+                  href={url}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + i * 0.1 }}
+                  viewport={{ once: true }}
+                  whileHover={{ y: -2 }}
+                >
+                  {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                </motion.a>
+              ))}
+            </div>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

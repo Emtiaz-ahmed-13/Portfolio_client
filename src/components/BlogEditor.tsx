@@ -13,8 +13,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import "react-quill/dist/quill.snow.css";
+
+// Dynamically import React Quill to avoid SSR issues
+const ReactQuill = dynamic(() => import("react-quill"), {
+  ssr: false,
+  loading: () => <p>Loading Editor...</p>,
+});
 
 type BlogFormData = {
   title: string;
@@ -24,7 +33,46 @@ type BlogFormData = {
   tags: string;
 };
 
+// Quill editor formats
+const formats = [
+  "header",
+  "font",
+  "size",
+  "bold",
+  "italic",
+  "underline",
+  "strike",
+  "blockquote",
+  "list",
+  "bullet",
+  "indent",
+  "link",
+  "image",
+  "video",
+  "color",
+  "background",
+  "code-block",
+];
+
+// Quill editor modules
+const modules = {
+  toolbar: [
+    [{ header: [1, 2, 3, 4, 5, 6, false] }],
+    ["bold", "italic", "underline", "strike", "blockquote"],
+    [
+      { list: "ordered" },
+      { list: "bullet" },
+      { indent: "-1" },
+      { indent: "+1" },
+    ],
+    ["link", "image"],
+    ["clean"],
+    ["code-block"],
+  ],
+};
+
 export default function BlogEditor() {
+  const router = useRouter();
   const [formData, setFormData] = useState<BlogFormData>({
     title: "",
     summary: "",
@@ -35,6 +83,38 @@ export default function BlogEditor() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check authentication on component mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/admin/check-auth");
+        if (response.ok) {
+          setIsAuthenticated(true);
+        } else {
+          router.push("/admin/login");
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        router.push("/admin/login");
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  // Redirect to blogs page after successful submission
+  useEffect(() => {
+    if (submitSuccess) {
+      // Add a short delay to show the success message before redirecting
+      const redirectTimer = setTimeout(() => {
+        router.push("/blogs");
+      }, 1500);
+
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [submitSuccess, router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -43,6 +123,14 @@ export default function BlogEditor() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  // Handle content change from the rich text editor
+  const handleContentChange = (content: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      content: content,
     }));
   };
 
@@ -76,6 +164,14 @@ export default function BlogEditor() {
         throw new Error(error.message || "Failed to create blog post");
       }
 
+      // Parse response data
+      const data = await response.json();
+
+      // Store blogs in localStorage for immediate access on redirect
+      if (data.blogs) {
+        localStorage.setItem("cachedBlogs", JSON.stringify(data.blogs));
+      }
+
       setSubmitSuccess(true);
       setFormData({
         title: "",
@@ -92,6 +188,15 @@ export default function BlogEditor() {
       setIsSubmitting(false);
     }
   };
+
+  // If not authenticated, show loading or redirect (handled by useEffect)
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto py-12 px-4 text-center">
+        <p>Checking authentication...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -171,18 +276,17 @@ export default function BlogEditor() {
 
               <div className="space-y-2">
                 <Label htmlFor="content">Content</Label>
-                <Textarea
-                  id="content"
-                  name="content"
-                  value={formData.content}
-                  onChange={handleChange}
-                  placeholder="Write your blog post content here. You can use HTML for formatting (<p>, <h2>, <pre>, etc.)."
-                  className="min-h-[300px] font-mono"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  You can use HTML tags to format your content
-                </p>
+                <div className="min-h-[300px] bg-white dark:bg-gray-900">
+                  <ReactQuill
+                    value={formData.content}
+                    onChange={handleContentChange}
+                    modules={modules}
+                    formats={formats}
+                    placeholder="Write your blog post content here..."
+                    theme="snow"
+                    className="h-[280px] mb-12" // Add extra space at the bottom for the toolbar
+                  />
+                </div>
               </div>
 
               {submitError && (
@@ -193,7 +297,7 @@ export default function BlogEditor() {
 
               {submitSuccess && (
                 <div className="p-3 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded-md">
-                  Blog post created successfully!
+                  Blog post created successfully! Redirecting to blogs page...
                 </div>
               )}
             </CardContent>

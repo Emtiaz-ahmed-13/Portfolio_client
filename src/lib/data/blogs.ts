@@ -11,8 +11,8 @@ export interface BlogData {
   updatedAt: string;
 }
 
-// Sample blogs data
-export const blogs: BlogData[] = [
+// Initial sample blog data
+const initialBlogs: BlogData[] = [
   {
     _id: "1",
     title: "Getting Started with React Hooks",
@@ -52,3 +52,23 @@ export const blogs: BlogData[] = [
     updatedAt: "2023-08-05T08:20:00Z",
   },
 ];
+
+// Sample blogs data - using spread to make a copy of initialBlogs
+export let blogs: BlogData[] = [...initialBlogs];
+
+// Reset blogs to initial sample data
+export const resetBlogs = () => {
+  blogs = [...initialBlogs];
+  console.log("Blogs reset to initial sample data");
+  logBlogsState();
+  return blogs;
+};
+
+// Utility function to log the current state of blogs
+export const logBlogsState = () => {
+  console.log(`Current blogs array has ${blogs.length} entries:`);
+  blogs.forEach((blog, index) => {
+    console.log(`${index}. ID: ${blog._id}, Title: ${blog.title}`);
+  });
+  return blogs.length;
+};

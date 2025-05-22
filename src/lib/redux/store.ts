@@ -8,6 +8,7 @@ import {
 } from "./types";
 
 // Import only authReducer that actually exists
+import adminAuthReducer from "./slices/adminAuthSlice";
 import authReducer from "./slices/authSlice";
 
 // Create initial state for slices
@@ -48,6 +49,7 @@ export const store = configureStore({
     ui: (state = initialUIState) => state,
     profile: (state = initialProfileState) => state,
     projects: (state = initialProjectsState) => state,
+    adminAuth: adminAuthReducer,
   },
   // Add middleware or other configuration as needed
 });
@@ -59,5 +61,6 @@ export type RootState = {
   ui: UIState;
   profile: ProfileState;
   projects: ProjectsState;
+  adminAuth: ReturnType<typeof adminAuthReducer>;
 };
 export type AppDispatch = typeof store.dispatch;

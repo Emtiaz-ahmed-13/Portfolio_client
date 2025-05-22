@@ -191,6 +191,11 @@ const blogsSlice = createSlice({
     resetSubmitStatus(state) {
       state.submitStatus = "idle";
     },
+    setBlogs(state, action: PayloadAction<Blog[]>) {
+      state.data = action.payload;
+      state.loading = false;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -237,6 +242,10 @@ const blogsSlice = createSlice({
   },
 });
 
-export const { resetBlogError, clearSelectedBlog, resetSubmitStatus } =
-  blogsSlice.actions;
+export const {
+  resetBlogError,
+  clearSelectedBlog,
+  resetSubmitStatus,
+  setBlogs,
+} = blogsSlice.actions;
 export default blogsSlice.reducer;

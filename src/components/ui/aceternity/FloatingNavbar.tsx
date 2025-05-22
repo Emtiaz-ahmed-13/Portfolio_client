@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { FaMoon, FaSun } from "react-icons/fa";
 import { cn } from "./cn";
 
 export const FloatingNavbar = ({
@@ -17,6 +18,33 @@ export const FloatingNavbar = ({
   className?: string;
 }) => {
   const [activeItem, setActiveItem] = useState<number | null>(null);
+  const [isDark, setIsDark] = useState(false);
+
+  // On mount, check localStorage or system preference
+  useEffect(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved) {
+      setIsDark(saved === "dark");
+      document.documentElement.classList.toggle("dark", saved === "dark");
+    } else {
+      // System preference
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      setIsDark(prefersDark);
+      document.documentElement.classList.toggle("dark", prefersDark);
+    }
+  }, []);
+
+  // Toggle dark mode
+  const toggleDark = () => {
+    setIsDark((prev) => {
+      const next = !prev;
+      document.documentElement.classList.toggle("dark", next);
+      localStorage.setItem("theme", next ? "dark" : "light");
+      return next;
+    });
+  };
 
   return (
     <motion.div
@@ -51,6 +79,18 @@ export const FloatingNavbar = ({
             )}
           </Link>
         ))}
+        {/* Dark mode toggle button */}
+        <button
+          aria-label="Toggle dark mode"
+          onClick={toggleDark}
+          className="ml-4 p-2 rounded-full bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+        >
+          {isDark ? (
+            <FaSun className="text-yellow-400 w-5 h-5" />
+          ) : (
+            <FaMoon className="text-gray-700 w-5 h-5" />
+          )}
+        </button>
       </div>
     </motion.div>
   );
